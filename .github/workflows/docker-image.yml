@@ -82,7 +82,7 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          # 动态生成标签列表（同时支持 GHCR 和 Docker Hub）
+          # 动态生成标签列表
           tags: |
             ghcr.io/${{ steps.lowercase.outputs.owner }}/lunatv:${{ github.event.inputs.tag || 'latest' }}
             ${{ secrets.DOCKER_HUB_USERNAME != '' && secrets.DOCKER_HUB_ACCESS_TOKEN != '' && format('{0}/lunatv:{1}', secrets.DOCKER_HUB_USERNAME, github.event.inputs.tag || 'latest') || '' }}
