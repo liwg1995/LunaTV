@@ -51,14 +51,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 仅当两个变量都存在时才登录 Docker Hub
-      - name: Login to Docker Hub
-        if: ${{ secrets.DOCKER_HUB_USERNAME != '' && secrets.DOCKER_HUB_ACCESS_TOKEN != '' }}
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
       - name: Set lowercase repository owner
         id: lowercase
         run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
@@ -67,10 +59,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          # 根据变量是否存在决定镜像列表
-          images: |
-            ghcr.io/${{ steps.lowercase.outputs.owner }}/lunatv
-            ${{ secrets.DOCKER_HUB_USERNAME != '' && secrets.DOCKER_HUB_ACCESS_TOKEN != '' && format('{0}/lunatv', secrets.DOCKER_HUB_USERNAME) || '' }}
+          images: ghcr.io/${{ steps.lowercase.outputs.owner }}/lunatv
           tags: |
             type=raw,value=${{ github.event.inputs.tag || 'latest' }},enable={{is_default_branch}}
 
@@ -82,14 +71,8 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          # 动态生成标签列表
-          tags: |
-            ghcr.io/${{ steps.lowercase.outputs.owner }}/lunatv:${{ github.event.inputs.tag || 'latest' }}
-            ${{ secrets.DOCKER_HUB_USERNAME != '' && secrets.DOCKER_HUB_ACCESS_TOKEN != '' && format('{0}/lunatv:{1}', secrets.DOCKER_HUB_USERNAME, github.event.inputs.tag || 'latest') || '' }}
-          # 动态生成输出列表
-          outputs: |
-            type=image,name=ghcr.io/${{ steps.lowercase.outputs.owner }}/lunatv,name-canonical=true,push=true
-            ${{ secrets.DOCKER_HUB_USERNAME != '' && secrets.DOCKER_HUB_ACCESS_TOKEN != '' && format('type=image,name={0}/lunatv,name-canonical=true,push=true', secrets.DOCKER_HUB_USERNAME) || '' }}
+          tags: ghcr.io/${{ steps.lowercase.outputs.owner }}/lunatv:${{ github.event.inputs.tag || 'latest' }}
+          outputs: type=image,name=ghcr.io/${{ steps.lowercase.outputs.owner }}/lunatv,name-canonical=true,push=true
           no-cache: true
           pull: true
 
@@ -129,31 +112,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 仅当两个变量都存在时才登录 Docker Hub
-      - name: Login to Docker Hub
-        if: ${{ secrets.DOCKER_HUB_USERNAME != '' && secrets.DOCKER_HUB_ACCESS_TOKEN != '' }}
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
       - name: Set lowercase repository owner
         id: lowercase
         run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-      - name: Create manifest list and push to GHCR
+      - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create -t ghcr.io/${{ steps.lowercase.outputs.owner }}/lunatv:${{ github.event.inputs.tag || 'latest' }} \
             $(printf 'ghcr.io/${{ steps.lowercase.outputs.owner }}/lunatv@sha256:%s ' *)
-
-      # 仅当两个变量都存在时才推送至 Docker Hub
-      - name: Create manifest list and push to Docker Hub
-        if: ${{ secrets.DOCKER_HUB_USERNAME != '' && secrets.DOCKER_HUB_ACCESS_TOKEN != '' }}
-        working-directory: /tmp/digests
-        run: |
-          docker buildx imagetools create -t ${{ secrets.DOCKER_HUB_USERNAME }}/lunatv:${{ github.event.inputs.tag || 'latest' }} \
-            $(printf '${{ secrets.DOCKER_HUB_USERNAME }}/lunatv@sha256:%s ' *)
 
   cleanup-refresh:
     runs-on: ubuntu-latest
